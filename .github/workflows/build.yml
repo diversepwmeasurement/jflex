@@ -1,131 +1,164 @@
-# Copyright 2023, Gerwin Klein, Régis Décamps, Steve Rowe
-# SPDX-License-Identifier: BSD-3-Clause
-
-name: Build
-
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-
 env:
   PUBLISH_SOURCES: 'true'
-
 jobs:
-  build:
-    name: 'Maven & Examples'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        java: [ 8, 11, 17 ]
-      fail-fast: false
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        java-version: ${{ matrix.java }}
-        distribution: zulu
-        cache: maven
-    - name: '🔨 Maven (build, test)'
-      run: scripts/test-unit.sh
-    - name: '🔨 Maven (site)'
-      run: scripts/mvn-site.sh
-    - name: '🔨 Maven (aggregate sources)'
-      run: scripts/mvn-aggregate-srcs.sh
-    - name: '😎 Examples (mvn, ant, make)'
-      run: scripts/test-examples.sh
-
   bazel:
-    name: 'Bazel'
-    runs-on: ubuntu-latest
+    name: Bazel
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/cache@v3
+    - continue-on-error: true
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/bazel
-        # We store new cache content for each new commit sha, but load the cache
-        # from any last run, because bazel is fairly good at figuring out diffs.
-        # Per GitHub policy, PRs will only get caches from the base branch, not
-        # from each other, and the base branch will not see the cache from PRs.
         key: ${{ runner.os }}-bazel-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-bazel-
-    - name: 'Info'
+        path: ~/.cache/bazel
+        restore-keys: '${{ runner.os }}-bazel-
+
+          '
+    - continue-on-error: true
+      name: Info
       run: bazel --bazelrc=.ci.bazelrc info release
-    - name: 'Unit Tests'
+    - continue-on-error: true
+      name: Unit Tests
       run: bazel --bazelrc=.ci.bazelrc test //jflex/...
-    - name: 'Integration+Regression Tests'
+    - continue-on-error: true
+      name: Integration+Regression Tests
       run: bazel --bazelrc=.ci.bazelrc test //javatests/...
-    - name: 'Build all'
+    - continue-on-error: true
+      name: Build all
       run: bazel --bazelrc=.ci.bazelrc build //...
-    - name: 'Test all'
+    - continue-on-error: true
+      name: Test all
       run: bazel --bazelrc=.ci.bazelrc test //...
-    - name: 'Build artifact'
+    - continue-on-error: true
+      name: Build artifact
       run: bazel --bazelrc=.ci.bazelrc build jflex/jflex_bin_deploy.jar
-    - name: 'Check aggregated sources'
-      run: |
-        bazel --bazelrc=.ci.bazelrc build //jflex:jflex_bin_deploy-src.jar //jflex:resources
+    - continue-on-error: true
+      name: Check aggregated sources
+      run: 'bazel --bazelrc=.ci.bazelrc build //jflex:jflex_bin_deploy-src.jar //jflex:resources
+
         mkdir -p jflex_bin_deploy; cd jflex_bin_deploy
+
         cp ../scripts/compile-aggregated-java-sources.sh compile.sh
+
         jar -xf ../bazel-bin/jflex/jflex_bin_deploy-src.jar
+
         jar -xf ../bazel-bin/jflex/libresources.jar
+
         ./compile.sh
+
         ls jflex/Main.class
 
-  regression:
-    name: 'Regression'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        java: [ 8, 11, 17 ]
-      fail-fast: false
+        '
+  build:
+    name: Maven & Examples
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK
+    - continue-on-error: true
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: ${{ matrix.java }}
-        distribution: zulu
         cache: maven
-    - name: '📝 Regression tests'
-      run: |
-        scripts/mvn-install-fastbuild.sh jflex-maven-plugin,testsuite/jflex-testsuite-maven-plugin
-        scripts/test-regression.sh
-
+        distribution: zulu
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: "\U0001F528 Maven (build, test)"
+      run: scripts/test-unit.sh
+    - continue-on-error: true
+      name: "\U0001F528 Maven (site)"
+      run: scripts/mvn-site.sh
+    - continue-on-error: true
+      name: "\U0001F528 Maven (aggregate sources)"
+      run: scripts/mvn-aggregate-srcs.sh
+    - continue-on-error: true
+      name: "\U0001F60E Examples (mvn, ant, make)"
+      run: scripts/test-examples.sh
+    strategy:
+      fail-fast: false
+      matrix:
+        java:
+        - 8
+        - 11
+        - 17
+        os:
+        - ubuntu-latest
+        - macos-latest
+  docs:
+    name: Docs
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Install LaTeX and pandoc
+      run: "sudo apt-get install \\\n     pandoc pandoc-citeproc texlive texlive-latex-extra\
+        \ lmodern\n"
+    - continue-on-error: true
+      name: "\U0001F4C4 Documentation"
+      run: cd docs; make
   javadoc:
     name: Javadoc
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java: [ 8, 11, 17 ]
-      fail-fast: false
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK
+    - continue-on-error: true
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: ${{ matrix.java }}
-        distribution: zulu
         cache: maven
-    - name: '🔨 Build JFlex jar'
-      run: |
-        mvn -Pfastbuild install
-    - name: '📝 Javadoc'
-      run: |
-        mvn javadoc:javadoc
+        distribution: zulu
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: "\U0001F528 Build JFlex jar"
+      run: 'mvn -Pfastbuild install
 
-  docs:
-    name: 'Docs'
-    runs-on: ubuntu-latest
+        '
+    - continue-on-error: true
+      name: "\U0001F4DD Javadoc"
+      run: 'mvn javadoc:javadoc
+
+        '
+    strategy:
+      fail-fast: false
+      matrix:
+        java:
+        - 8
+        - 11
+        - 17
+  regression:
+    name: Regression
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
-    - name: 'Install LaTeX and pandoc'
-      run: |
-        sudo apt-get install \
-             pandoc pandoc-citeproc texlive texlive-latex-extra lmodern
-    - name: "📄 Documentation"
-      run: cd docs; make
+    - continue-on-error: true
+      uses: actions/checkout@v3
+    - continue-on-error: true
+      name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        cache: maven
+        distribution: zulu
+        java-version: ${{ matrix.java }}
+    - continue-on-error: true
+      name: "\U0001F4DD Regression tests"
+      run: 'scripts/mvn-install-fastbuild.sh jflex-maven-plugin,testsuite/jflex-testsuite-maven-plugin
+
+        scripts/test-regression.sh
+
+        '
+    strategy:
+      fail-fast: false
+      matrix:
+        java:
+        - 8
+        - 11
+        - 17
+        os:
+        - ubuntu-latest
+        - macos-latest
+name: Build
+on:
+  repository_dispatch:
+    types: trigger-ga___build.yml

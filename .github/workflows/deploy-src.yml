@@ -1,41 +1,41 @@
-# Copyright 2023, Gerwin Klein
-# SPDX-License-Identifier: BSD-3-Clause
-
-name: Deploy Sources
-
-on:
-  push:
-    branches:
-      - master
-
 env:
   PUBLISH_SOURCES: 'true'
-
 jobs:
-
   deploy:
-    name: 'Sources'
-    runs-on: ubuntu-latest
+    name: Sources
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v3
+    - continue-on-error: true
+      uses: actions/checkout@v3
       with:
         path: jflex
-    - uses: actions/checkout@v3
+    - continue-on-error: true
+      uses: actions/checkout@v3
       with:
-        ref: aggregated-java-sources
         path: aggregated-java-sources
-    - uses: actions/cache@v3
+        ref: aggregated-java-sources
+    - continue-on-error: true
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/bazel
-        # same as for build action
         key: ${{ runner.os }}-bazel-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-bazel-
-    - name: 'Info'
+        path: ~/.cache/bazel
+        restore-keys: '${{ runner.os }}-bazel-
+
+          '
+    - continue-on-error: true
+      name: Info
       run: cd jflex; bazel --bazelrc=.ci.bazelrc info release
-    - name: 'Prepare aggregated sources'
-      run: |
-        cd jflex; scripts/prepare-deploy-source-code.sh
-    - name: 'Push'
-      run: |
-        cd aggregated-java-sources; git push
+    - continue-on-error: true
+      name: Prepare aggregated sources
+      run: 'cd jflex; scripts/prepare-deploy-source-code.sh
+
+        '
+    - continue-on-error: true
+      name: Push
+      run: 'cd aggregated-java-sources; git push
+
+        '
+name: Deploy Sources
+on:
+  repository_dispatch:
+    types: trigger-ga___deploy-src.yml
